@@ -1,12 +1,30 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const API_BASE_URL = "http://localhost:8000";
 const HISTORY_KEY = "ai-trust-engine-history";
 const MAX_HISTORY_ITEMS = 10;
 const DEFAULT_UNCERTAINTY_NOTE =
   "This tool provides AI-based analysis and may not be fully accurate.";
-const DEMO_TEXT =
-  "BREAKING shocking report claims a hidden health crisis is spreading across major cities!!! Officials have not released verified evidence, but viral posts say urgent action is needed immediately.";
+
+const SAMPLE_ANALYSES = [
+  {
+    label: "Try clickbait example",
+    tone: "High-risk language",
+    text: "BREAKING shocking report claims a hidden health crisis is spreading across major cities!!! Officials have not released verified evidence, but viral posts say urgent action is needed immediately.",
+  },
+  {
+    label: "Try neutral example",
+    tone: "Measured reporting",
+    text: "According to available city health department data, officials are monitoring a rise in seasonal illness cases and have advised residents to follow standard public health guidance.",
+  },
+  {
+    label: "Try unsourced claim",
+    tone: "Missing evidence",
+    text: "Several posts claim that a major company secretly changed its safety policy overnight, but no official statement or independent report has confirmed the allegation.",
+  },
+];
+
+const DEMO_TEXT = SAMPLE_ANALYSES[0].text;
 
 const riskStyles = {
   LOW: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -27,11 +45,18 @@ const riskAccent = {
 };
 
 const highlightStyles = {
-  emotional_language: "bg-rose-100 text-rose-950 ring-rose-200",
-  all_caps: "bg-violet-100 text-violet-950 ring-violet-200",
-  excessive_punctuation: "bg-amber-100 text-amber-950 ring-amber-200",
-  clickbait: "bg-orange-100 text-orange-950 ring-orange-200",
+  emotional_language: "bg-yellow-100 text-yellow-950 ring-yellow-300",
+  clickbait: "bg-red-100 text-red-950 ring-red-300",
+  all_caps: "bg-orange-100 text-orange-950 ring-orange-300",
+  excessive_punctuation: "bg-sky-100 text-sky-950 ring-sky-300",
 };
+
+const legendItems = [
+  { type: "emotional_language", label: "Emotional" },
+  { type: "clickbait", label: "Clickbait" },
+  { type: "all_caps", label: "ALL CAPS" },
+  { type: "excessive_punctuation", label: "Punctuation" },
+];
 
 const explanationLabels = {
   emotional_language: "Emotional language",
@@ -53,12 +78,35 @@ const breakdownLabels = {
   source_score: "Sources",
 };
 
-const featureHighlights = [
-  "Credibility scoring",
-  "Explainable signals",
-  "Neutral rewrite",
-  "Shareable report",
-];
+function DemoPolishStyles() {
+  return (
+    <style>
+      {`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(14px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes softGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(2, 132, 199, 0.34); }
+          50% { box-shadow: 0 0 0 10px rgba(2, 132, 199, 0); }
+        }
+
+        .result-card {
+          animation: fadeInUp 420ms ease-out both;
+        }
+
+        .highlighted-copy {
+          animation: fadeInUp 360ms ease-out both;
+        }
+
+        .demo-glow {
+          animation: softGlow 2.2s ease-in-out infinite;
+        }
+      `}
+    </style>
+  );
+}
 
 function getRouteReportId() {
   const match = window.location.pathname.match(/^\/report\/([^/]+)/);
@@ -187,7 +235,7 @@ function HighlightedText({ text, explanation }) {
   }
 
   if (!ranges.length) {
-    return <p>{text}</p>;
+    return <p className="highlighted-copy">{text}</p>;
   }
 
   const parts = [];
@@ -201,7 +249,7 @@ function HighlightedText({ text, explanation }) {
     parts.push(
       <mark
         key={`${range.start}-${range.end}-${index}`}
-        className={`rounded px-1 ring-1 ${
+        className={`rounded px-1 ring-1 transition ${
           highlightStyles[range.type] || "bg-sky-100 text-sky-950 ring-sky-200"
         }`}
         title={explanationLabels[range.type] || range.type}
@@ -216,7 +264,7 @@ function HighlightedText({ text, explanation }) {
     parts.push(text.slice(cursor));
   }
 
-  return <p>{parts}</p>;
+  return <p className="highlighted-copy">{parts}</p>;
 }
 
 function Spinner() {
@@ -227,34 +275,36 @@ function Spinner() {
 
 function LandingHero({ onTryDemo, isLoading }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-8">
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
             AI Trust Engine
           </p>
-          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-950 lg:text-5xl">
-            Credibility analysis that users can understand and act on.
+          <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-slate-950 sm:text-5xl">
+            Shows signals of potential misinformation in seconds.
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-            Paste a claim or article URL to get a risk score, highlighted credibility
-            signals, a neutral rewrite, and a shareable report for review.
+            Paste a claim or article URL to see credibility signals, highlighted
+            language, a neutral rewrite, and a shareable report built for fast review.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-2">
-            {featureHighlights.map((feature) => (
-              <span
-                key={feature}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
-              >
-                {feature}
-              </span>
-            ))}
+            {["Risk score", "Inline highlights", "Rewrite comparison", "Report sharing"].map(
+              (feature) => (
+                <span
+                  key={feature}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-700"
+                >
+                  {feature}
+                </span>
+              ),
+            )}
           </div>
 
           <button
             type="button"
-            className="mt-7 inline-flex items-center gap-2 rounded-md bg-slate-950 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className="demo-glow mt-7 inline-flex w-full items-center justify-center gap-2 rounded-md bg-sky-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
             onClick={onTryDemo}
             disabled={isLoading}
           >
@@ -263,19 +313,20 @@ function LandingHero({ onTryDemo, isLoading }) {
           </button>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-5">
-          <p className="text-sm font-semibold text-slate-700">Demo flow</p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <p className="text-sm font-semibold text-slate-700">2-minute demo path</p>
           <div className="mt-4 space-y-3">
             {[
-              "1. Detect risky language patterns",
-              "2. Explain why they matter",
-              "3. Compare original vs neutral rewrite",
-              "4. Copy a report link for sharing",
-            ].map((step) => (
+              "Detect risky language patterns",
+              "Explain why they matter",
+              "Compare original vs neutral rewrite",
+              "Copy a report link for sharing",
+            ].map((step, index) => (
               <div
                 key={step}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
               >
+                <span className="mr-2 font-semibold text-sky-700">{index + 1}</span>
                 {step}
               </div>
             ))}
@@ -288,7 +339,7 @@ function LandingHero({ onTryDemo, isLoading }) {
 
 function UncertaintyNotice({ note }) {
   return (
-    <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
+    <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
       <p className="font-semibold">Responsible use note</p>
       <p className="mt-1">{note || DEFAULT_UNCERTAINTY_NOTE}</p>
     </section>
@@ -297,7 +348,7 @@ function UncertaintyNotice({ note }) {
 
 function LoadingPanel() {
   return (
-    <section className="rounded-lg border border-sky-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-sky-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="font-semibold text-slate-900">Analyzing content...</p>
@@ -305,7 +356,7 @@ function LoadingPanel() {
             Scoring language, structure, source signals, and rewrite quality.
           </p>
         </div>
-        <span className="h-10 w-10 rounded-full border-4 border-sky-100 border-t-sky-700 animate-spin" />
+        <span className="h-10 w-10 shrink-0 animate-spin rounded-full border-4 border-sky-100 border-t-sky-700" />
       </div>
       <div className="mt-5 h-2 overflow-hidden rounded-full bg-slate-100">
         <div className="h-full w-2/3 animate-pulse rounded-full bg-sky-600" />
@@ -316,19 +367,38 @@ function LoadingPanel() {
 
 function FriendlyError({ message, onRetry, canRetry }) {
   return (
-    <section className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+    <section className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
       <p className="font-semibold">Analysis could not be completed</p>
       <p className="mt-1">{message}</p>
       {canRetry && (
         <button
           type="button"
-          className="mt-3 rounded-md border border-red-300 bg-white px-3 py-1.5 font-medium text-red-700 transition hover:bg-red-100"
+          className="mt-3 w-full rounded-md border border-red-300 bg-white px-3 py-2 font-medium text-red-700 transition hover:bg-red-100 sm:w-auto"
           onClick={onRetry}
         >
-          Retry
+          Retry analysis
         </button>
       )}
     </section>
+  );
+}
+
+function EmptySamples({ onSelectSample, isLoading }) {
+  return (
+    <div className="mt-4 grid gap-3 md:grid-cols-3">
+      {SAMPLE_ANALYSES.map((sample) => (
+        <button
+          key={sample.label}
+          type="button"
+          className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+          onClick={() => onSelectSample(sample.text)}
+          disabled={isLoading}
+        >
+          <p className="text-sm font-semibold text-slate-800">{sample.label}</p>
+          <p className="mt-1 text-xs text-slate-500">{sample.tone}</p>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -342,9 +412,12 @@ function InputPanel({
   isLoading,
   onAnalyze,
   onTryDemo,
+  onSelectSample,
 }) {
+  const showSamples = mode === "text" && !text.trim();
+
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="inline-flex w-fit rounded-md border border-slate-200 bg-slate-50 p-1">
           {["text", "url"].map((inputMode) => (
@@ -365,7 +438,7 @@ function InputPanel({
 
         <button
           type="button"
-          className="w-fit rounded-md border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-800 disabled:cursor-not-allowed disabled:text-slate-400"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-800 disabled:cursor-not-allowed disabled:text-slate-400 sm:w-auto"
           onClick={onTryDemo}
           disabled={isLoading}
         >
@@ -385,6 +458,9 @@ function InputPanel({
             value={text}
             onChange={(event) => setText(event.target.value)}
           />
+          {showSamples && (
+            <EmptySamples onSelectSample={onSelectSample} isLoading={isLoading} />
+          )}
         </div>
       ) : (
         <div className="mt-4">
@@ -404,7 +480,7 @@ function InputPanel({
 
       <button
         type="button"
-        className="mt-4 inline-flex items-center gap-2 rounded-md bg-sky-700 px-4 py-2.5 font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-sky-700 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400 sm:w-auto"
         onClick={onAnalyze}
         disabled={isLoading}
       >
@@ -416,20 +492,44 @@ function InputPanel({
 }
 
 function ScoreCircle({ score, riskLevel }) {
-  const percent = Math.round(score * 100);
+  const [displayScore, setDisplayScore] = useState(0);
+
+  useEffect(() => {
+    let animationFrame;
+    const duration = 900;
+    const startedAt = performance.now();
+    const target = Math.round(score * 100);
+
+    function animate(now) {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayScore(Math.round(target * eased));
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    }
+
+    setDisplayScore(0);
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
+  }, [score]);
+
   const color = riskAccent[riskLevel] || riskAccent.MEDIUM;
 
   return (
     <div
-      className="grid h-36 w-36 place-items-center rounded-full transition-all duration-700"
+      className="grid h-28 w-28 shrink-0 place-items-center rounded-full transition-all duration-700 sm:h-36 sm:w-36"
       style={{
-        background: `conic-gradient(${color} ${percent * 3.6}deg, #e2e8f0 0deg)`,
+        background: `conic-gradient(${color} ${displayScore * 3.6}deg, #e2e8f0 0deg)`,
       }}
       title="Credibility score combines model output with language, structure, and source-related signals. It is not a factual verdict."
     >
-      <div className="grid h-28 w-28 place-items-center rounded-full bg-white shadow-inner">
+      <div className="grid h-20 w-20 place-items-center rounded-full bg-white shadow-inner sm:h-28 sm:w-28">
         <div className="text-center">
-          <p className="text-3xl font-bold text-slate-950">{percent}%</p>
+          <p className="text-2xl font-bold text-slate-950 sm:text-3xl">
+            {displayScore}%
+          </p>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Score
           </p>
@@ -441,9 +541,9 @@ function ScoreCircle({ score, riskLevel }) {
 
 function ScoreSummary({ result }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition">
+    <section className="result-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition">
       <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <ScoreCircle score={result.credibility_score} riskLevel={result.risk_level} />
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -457,8 +557,8 @@ function ScoreSummary({ result }) {
               {result.risk_level} RISK
             </span>
             <p className="mt-3 max-w-md text-sm leading-6 text-slate-600">
-              The score reflects language and credibility signals. It should guide
-              review, not replace fact-checking.
+              Shows signals of potential misinformation. Use this score to guide
+              review, not as a factual verdict.
             </p>
           </div>
         </div>
@@ -470,10 +570,11 @@ function ScoreSummary({ result }) {
             </p>
             <p
               className="mt-1 text-2xl font-bold text-slate-950"
-              title="This reflects model certainty, not factual correctness."
+              title="Model confidence (not factual certainty)."
             >
               {(result.model_confidence * 100).toFixed(1)}%
             </p>
+            <p className="mt-1 text-xs text-slate-500">Not factual certainty</p>
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -498,11 +599,45 @@ function ScoreSummary({ result }) {
   );
 }
 
+function WhyThisMatters({ result }) {
+  const impacts = Array.from(
+    new Set(
+      result.explanation
+        .map((item) => item.impact)
+        .filter(Boolean)
+        .slice(0, 3),
+    ),
+  );
+
+  const bullets = impacts.length
+    ? impacts
+    : [
+        "Readers may need more context before treating the claim as reliable.",
+        "Neutral phrasing helps separate evidence from emotional reaction.",
+      ];
+
+  return (
+    <section className="result-card rounded-xl border border-sky-200 bg-sky-50 p-5 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-800">
+        Why this matters
+      </h2>
+      <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-700">
+        {bullets.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-700" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function Breakdown({ breakdown }) {
   const scoreKeys = ["language_score", "structure_score", "source_score"];
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="result-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Breakdown
       </h2>
@@ -535,30 +670,46 @@ function Breakdown({ breakdown }) {
   );
 }
 
-function RewriteSuggestion({ result }) {
-  const improvement = result.improvement;
-  const improved = improvement.after_score > improvement.before_score;
-
+function ImprovementBadge({ improvement }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-        Before vs After
-      </h2>
+    <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-800">
+      Improved: {improvement.change.replace("->", "to")}
+      <svg
+        aria-hidden="true"
+        className="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        viewBox="0 0 24 24"
+      >
+        <path d="M5 12h14" />
+        <path d="m13 6 6 6-6 6" />
+      </svg>
+    </span>
+  );
+}
 
-      <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
-        {improved ? "Credibility improved" : "Credibility changed"} from{" "}
-        {improvement.change.replace("->", "to")}.
-      </p>
+function RewriteSuggestion({ result }) {
+  return (
+    <section className="result-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Before vs After
+        </h2>
+        <ImprovementBadge improvement={result.improvement} />
+      </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <p className="text-sm font-semibold text-slate-700">Original text</p>
           <p className="mt-2 max-h-72 overflow-auto text-sm leading-6 text-slate-700">
             {result.analyzed_text}
           </p>
         </div>
 
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
           <p className="text-sm font-semibold text-emerald-800">Neutral rewrite</p>
           <p className="mt-2 max-h-72 overflow-auto text-sm leading-6 text-slate-800">
             {result.suggested_rewrite}
@@ -569,16 +720,36 @@ function RewriteSuggestion({ result }) {
   );
 }
 
+function HighlightLegend() {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {legendItems.map((item) => (
+        <span
+          key={item.type}
+          className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${
+            highlightStyles[item.type]
+          }`}
+        >
+          {item.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function Explanation({ result }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="result-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Highlighted Explanation
       </h2>
 
-      <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
-        <h3 className="text-sm font-semibold text-slate-700">Analyzed text</h3>
-        <div className="mt-3 max-h-80 overflow-auto text-sm leading-7 text-slate-700">
+      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h3 className="text-sm font-semibold text-slate-700">Analyzed text</h3>
+          <HighlightLegend />
+        </div>
+        <div className="mt-4 max-h-80 overflow-auto text-sm leading-7 text-slate-700">
           <HighlightedText text={result.analyzed_text} explanation={result.explanation} />
         </div>
       </div>
@@ -587,7 +758,7 @@ function Explanation({ result }) {
         {result.explanation.map((item, index) => (
           <article
             key={`${item.type}-${item.text}-${index}`}
-            className="rounded-md border border-slate-200 p-3 transition hover:border-sky-200 hover:bg-sky-50"
+            className="rounded-lg border border-slate-200 p-3 transition hover:border-sky-200 hover:bg-sky-50"
           >
             <p className="text-sm font-semibold text-slate-900">
               {explanationLabels[item.type] || item.type}
@@ -607,7 +778,7 @@ function Explanation({ result }) {
 
 function ActionTips({ suggestions }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="result-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Action Tips
       </h2>
@@ -625,24 +796,33 @@ function ActionTips({ suggestions }) {
   );
 }
 
-function ShareCard({ reportUrl, onCopy, copyStatus }) {
+function ShareCard({ reportUrl, onCopy, copyStatus, shareRef }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="result-card rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Share Report
       </h2>
-      <p className="mt-3 break-all rounded-md bg-slate-50 p-3 text-sm text-sky-800">
+      <p
+        ref={shareRef}
+        className={`mt-3 break-all rounded-md border p-3 text-sm text-sky-800 transition ${
+          copyStatus
+            ? "border-emerald-300 bg-emerald-50"
+            : "border-transparent bg-slate-50"
+        }`}
+      >
         {reportUrl}
       </p>
       <button
         type="button"
-        className="mt-3 w-full rounded-md bg-slate-950 px-4 py-2 font-semibold text-white transition hover:bg-slate-800"
+        className="mt-3 w-full rounded-md bg-slate-950 px-4 py-2.5 font-semibold text-white transition hover:bg-slate-800"
         onClick={onCopy}
       >
         Copy Report Link
       </button>
       {copyStatus && (
-        <p className="mt-2 text-sm font-medium text-emerald-700">{copyStatus}</p>
+        <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-lg">
+          {copyStatus}
+        </div>
       )}
     </section>
   );
@@ -658,6 +838,9 @@ function App() {
   const [history, setHistory] = useState(loadHistory);
   const [lastPayload, setLastPayload] = useState(null);
   const [copyStatus, setCopyStatus] = useState("");
+  const [scrollToResults, setScrollToResults] = useState(false);
+  const resultsRef = useRef(null);
+  const shareRef = useRef(null);
 
   const reportUrl = result
     ? `${window.location.origin}/report/${result.report_id}`
@@ -681,6 +864,15 @@ function App() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (result && scrollToResults) {
+      window.setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+      setScrollToResults(false);
+    }
+  }, [result, scrollToResults]);
 
   function applyResult(nextResult) {
     const normalized = normalizeResult(nextResult);
@@ -708,6 +900,7 @@ function App() {
     if (item.result) {
       applyResult(item.result);
       window.history.pushState({}, "", `/report/${item.report_id}`);
+      setScrollToResults(true);
       return;
     }
 
@@ -728,6 +921,7 @@ function App() {
       }
 
       applyResult(payload);
+      setScrollToResults(true);
 
       if (options.updatePath) {
         window.history.pushState({}, "", `/report/${payload.report_id}`);
@@ -739,7 +933,7 @@ function App() {
     }
   }
 
-  async function analyzePayload(payload) {
+  async function analyzePayload(payload, options = { scroll: true }) {
     setError("");
     setResult(null);
     setCopyStatus("");
@@ -762,6 +956,7 @@ function App() {
 
       applyResult(nextResult);
       addToHistory(nextResult);
+      setScrollToResults(Boolean(options.scroll));
       window.history.pushState({}, "", `/report/${nextResult.report_id}`);
     } catch (requestError) {
       setError(requestError.message);
@@ -796,6 +991,13 @@ function App() {
     analyzePayload({ text: DEMO_TEXT });
   }
 
+  function handleSelectSample(sampleText) {
+    setMode("text");
+    setText(sampleText);
+    setUrl("");
+    analyzePayload({ text: sampleText });
+  }
+
   function handleRetry() {
     if (lastPayload) {
       analyzePayload(lastPayload);
@@ -808,14 +1010,19 @@ function App() {
     }
 
     await navigator.clipboard.writeText(reportUrl);
-    setCopyStatus("Report link copied.");
-    window.setTimeout(() => setCopyStatus(""), 2500);
+    setCopyStatus("Link copied");
+    shareRef.current?.classList.add("ring-2", "ring-emerald-300");
+    window.setTimeout(() => {
+      setCopyStatus("");
+      shareRef.current?.classList.remove("ring-2", "ring-emerald-300");
+    }, 2200);
   }
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-950">
+      <DemoPolishStyles />
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 lg:grid-cols-[280px_minmax(0,1fr)] lg:py-6">
-        <aside className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 lg:h-fit">
+        <aside className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:sticky lg:top-6 lg:h-fit">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
               Saved analyses
@@ -835,7 +1042,7 @@ function App() {
                 key={item.report_id}
                 type="button"
                 onClick={() => loadHistoryItem(item)}
-                className="w-full rounded-md border border-slate-200 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                className="w-full rounded-lg border border-slate-200 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span
@@ -873,6 +1080,7 @@ function App() {
             isLoading={isLoading}
             onAnalyze={handleAnalyze}
             onTryDemo={handleTryDemo}
+            onSelectSample={handleSelectSample}
           />
 
           {error && (
@@ -886,9 +1094,13 @@ function App() {
           {isLoading && <LoadingPanel />}
 
           {result && !isLoading && (
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div
+              ref={resultsRef}
+              className="grid scroll-mt-6 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"
+            >
               <div className="space-y-5">
                 <ScoreSummary result={result} />
+                <WhyThisMatters result={result} />
                 <Breakdown breakdown={result.breakdown} />
                 <Explanation result={result} />
                 <RewriteSuggestion result={result} />
@@ -900,6 +1112,7 @@ function App() {
                   reportUrl={reportUrl}
                   onCopy={copyReportUrl}
                   copyStatus={copyStatus}
+                  shareRef={shareRef}
                 />
               </div>
             </div>
