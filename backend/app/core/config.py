@@ -9,10 +9,13 @@ API_VERSION = "0.1.0"
 
 MODEL_NAME = os.getenv(
     "MODEL_NAME",
-    "distilbert-base-uncased-finetuned-sst-2-english",
+    "hamzab/roberta-fake-news-classification",
 )
 
-CORS_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+MODEL_INPUT_TEMPLATE = os.getenv(
+    "MODEL_INPUT_TEMPLATE",
+    "<title> User submitted content <content> {text} <end>",
+)
+MODEL_TIMEOUT_SECONDS = float(os.getenv("MODEL_TIMEOUT_SECONDS", "12"))
+
+CORS_ORIGINS = ["*"]

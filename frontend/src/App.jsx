@@ -8,6 +8,15 @@ const riskStyles = {
   HIGH: "bg-red-100 text-red-800 border-red-200",
 };
 
+const explanationLabels = {
+  emotional_language: "Emotional language",
+  all_caps: "All caps",
+  excessive_punctuation: "Excessive punctuation",
+  missing_sources: "Missing sources",
+  clickbait: "Clickbait pattern",
+  no_risk_signals: "No obvious rule signals",
+};
+
 function App() {
   const [text, setText] = useState("");
   const [result, setResult] = useState(null);
@@ -36,7 +45,7 @@ function App() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.detail || "Analysis request failed.");
+        throw new Error(payload?.error || payload?.detail || "Analysis request failed.");
       }
 
       setResult(await response.json());
@@ -91,10 +100,24 @@ function App() {
         {result && (
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center gap-3">
-              <div>
+              <div className="min-w-36">
                 <p className="text-sm text-slate-500">Credibility score</p>
                 <p className="text-3xl font-bold">
                   {(result.credibility_score * 100).toFixed(1)}%
+                </p>
+              </div>
+
+              <div className="min-w-32">
+                <p className="text-sm text-slate-500">Confidence</p>
+                <p className="text-2xl font-semibold">
+                  {(result.confidence * 100).toFixed(1)}%
+                </p>
+              </div>
+
+              <div className="min-w-32">
+                <p className="text-sm text-slate-500">Processing</p>
+                <p className="text-2xl font-semibold">
+                  {result.processing_time_ms}ms
                 </p>
               </div>
 
@@ -112,8 +135,16 @@ function App() {
                 Explanation
               </h2>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700">
-                {result.explanation.map((item) => (
-                  <li key={item}>{item}</li>
+                {result.explanation.map((item, index) => (
+                  <li key={`${item.type}-${item.text}-${index}`}>
+                    <span className="font-medium">
+                      {explanationLabels[item.type] || item.type}
+                    </span>
+                    :{" "}
+                    <mark className="rounded bg-sky-50 px-1 text-slate-800">
+                      {item.text}
+                    </mark>
+                  </li>
                 ))}
               </ul>
             </div>

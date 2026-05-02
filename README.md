@@ -46,7 +46,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The first backend startup downloads the pretrained HuggingFace model.
+The first backend startup downloads the pretrained HuggingFace model. By default,
+Phase 1 uses `hamzab/roberta-fake-news-classification` and combines the model
+probability with rule-based credibility penalties.
 
 Health check:
 
@@ -68,21 +70,41 @@ Example response:
 {
   "credibility_score": 0.3124,
   "risk_level": "HIGH",
+  "confidence": 0.9123,
   "explanation": [
-    "Emotionally charged language detected",
-    "ALL CAPS words detected",
-    "Excessive punctuation detected",
-    "Possible clickbait pattern"
-  ]
+    {
+      "type": "emotional_language",
+      "text": "BREAKING shocking claim!!!"
+    },
+    {
+      "type": "all_caps",
+      "text": "BREAKING"
+    },
+    {
+      "type": "excessive_punctuation",
+      "text": "!!!"
+    },
+    {
+      "type": "clickbait",
+      "text": "BREAKING shocking claim!!!"
+    }
+  ],
+  "processing_time_ms": 421
 }
 ```
 
-Empty input is rejected by request validation.
+Empty input is rejected with a `400` error response.
 
 ```powershell
 curl -X POST http://localhost:8000/analyze `
   -H "Content-Type: application/json" `
   -d "{\"text\":\"\"}"
+```
+
+```json
+{
+  "error": "Text must not be empty"
+}
 ```
 
 ## Frontend
