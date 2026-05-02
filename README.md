@@ -1,57 +1,61 @@
 # AI Trust Engine
 
-Phase 1 MVP misinformation detection system.
+AI Trust Engine is a hackathon-ready AI credibility assistant for reviewing news claims and short articles. It combines a transformer model with explainable rule-based signals to help users spot risky language, rewrite content more neutrally, and share review reports.
 
-## Folder Structure
+## Key Features
+
+- Credibility analysis for pasted text or article URLs.
+- Explainability with highlighted risk signals such as emotional language, all caps, clickbait phrasing, repeated punctuation, and missing sources.
+- Rewrite suggestions that convert risky wording into a more neutral version.
+- Responsible AI notes that frame the score as a review aid, not a factual verdict.
+- Shareable report links for demo and review workflows.
+
+## Tech Stack
+
+- Backend: FastAPI, Pydantic, Uvicorn, Transformers, PyTorch
+- Frontend: React, Vite, Tailwind CSS
+- Model: `hamzab/roberta-fake-news-classification`
+
+## Project Structure
 
 ```text
 backend/
   app/
-    api/
-      routes/
-        analysis.py
-        health.py
+    api/routes/
     core/
-      config.py
-      logging.py
     models/
-      model_loader.py
     schemas/
-      analysis.py
     services/
-      explanation_service.py
-      inference_service.py
-      assistant_service.py
-      report_store.py
-      url_extraction_service.py
-    utils/
     main.py
   requirements.txt
 frontend/
   src/
-    App.jsx
-    main.jsx
-    styles.css
   index.html
-  package-lock.json
   package.json
-  postcss.config.js
-  tailwind.config.js
+  package-lock.json
 ```
 
-## Backend
+## Run Locally
+
+### Backend
+
+Requires Python 3.10+.
 
 ```powershell
 cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
-The first backend startup downloads the pretrained HuggingFace model. By default,
-Phase 1 uses `hamzab/roberta-fake-news-classification` and combines the model
-probability with rule-based credibility penalties.
+The first backend startup downloads the Hugging Face model. After the model is cached, the backend can be started offline by setting:
+
+```powershell
+$env:TRANSFORMERS_OFFLINE="1"
+$env:HF_HUB_OFFLINE="1"
+```
 
 Health check:
 
@@ -64,105 +68,18 @@ Analyze text:
 ```powershell
 curl -X POST http://localhost:8000/analyze `
   -H "Content-Type: application/json" `
-  -d "{\"text\":\"BREAKING shocking claim!!! Officials reported by Reuters are investigating.\"}"
+  -d "{\"text\":\"BREAKING shocking claim!!! Officials have not released verified evidence.\"}"
 ```
 
-Analyze a URL:
+Fetch a report:
 
 ```powershell
-curl -X POST http://localhost:8000/analyze `
-  -H "Content-Type: application/json" `
-  -d "{\"url\":\"https://example.com/news/article\"}"
+curl http://localhost:8000/report/<report_id>
 ```
 
-Example response:
+### Frontend
 
-```json
-{
-  "report_id": "a1b2c3d4e5f6",
-  "credibility_score": 0.3124,
-  "risk_level": "HIGH",
-  "model_confidence": 0.9123,
-  "explanation": [
-    {
-      "type": "emotional_language",
-      "text": "BREAKING shocking claim!!!",
-      "reason": "Emotionally charged wording can make a claim feel persuasive before evidence is evaluated.",
-      "impact": "Readers may react emotionally instead of checking whether the claim is supported."
-    },
-    {
-      "type": "all_caps",
-      "text": "BREAKING",
-      "reason": "ALL CAPS is often used to amplify urgency or alarm rather than add verifiable detail.",
-      "impact": "The text can feel alarmist, which may reduce perceived professionalism and reliability."
-    },
-    {
-      "type": "excessive_punctuation",
-      "text": "!!!",
-      "reason": "Repeated punctuation can signal exaggeration or clickbait framing.",
-      "impact": "The claim may appear exaggerated even if parts of it are accurate."
-    },
-    {
-      "type": "clickbait",
-      "text": "BREAKING shocking claim!!!",
-      "reason": "Clickbait-style phrasing can reduce trust because it prioritizes reaction over evidence.",
-      "impact": "The framing can make the content feel optimized for attention rather than accuracy."
-    }
-  ],
-  "breakdown": {
-    "language_score": 35,
-    "structure_score": 55,
-    "source_score": 60,
-    "source_note": "Source reference detected, but this tool has not independently verified it."
-  },
-  "suggested_rewrite": "According to available information, officials reported by Reuters are investigating. Additional context may be needed before drawing a firm conclusion.",
-  "suggestions": [
-    "Use neutral, specific wording instead of emotional phrases.",
-    "Use normal sentence case unless an acronym is required.",
-    "Reduce repeated punctuation and let evidence carry the claim."
-  ],
-  "improvement": {
-    "before_score": 0.3124,
-    "after_score": 0.5812,
-    "change": "HIGH -> MEDIUM"
-  },
-  "uncertainty_note": "This analysis is based on language patterns and may not reflect factual accuracy.",
-  "processing_time_ms": 421,
-  "analyzed_text": "BREAKING shocking claim!!! Officials reported by Reuters are investigating.",
-  "source_type": "text",
-  "source_url": null
-}
-```
-
-Fetch a shareable report:
-
-```powershell
-curl http://localhost:8000/report/a1b2c3d4e5f6
-```
-
-Frontend report URL example:
-
-```text
-http://localhost:5173/report/a1b2c3d4e5f6
-```
-
-Empty input is rejected with a `400` error response.
-
-```powershell
-curl -X POST http://localhost:8000/analyze `
-  -H "Content-Type: application/json" `
-  -d "{\"text\":\"\"}"
-```
-
-```json
-{
-  "error": "Text must not be empty"
-}
-```
-
-## Frontend
-
-Requires Node `>=20.19.0` or `>=22.12.0`.
+Requires Node 20.19+ or 22.12+.
 
 ```powershell
 cd frontend
@@ -170,4 +87,14 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` and make sure the backend is running on `http://localhost:8000`.
+Open `http://localhost:5173` and keep the backend running on `http://localhost:8000`.
+
+For deployed frontend builds, set:
+
+```text
+VITE_API_BASE_URL=https://your-backend-url.example
+```
+
+## Responsible Use
+
+This project is designed to support human review. Its score reflects model and language-pattern signals, not a definitive truth judgment.

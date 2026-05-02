@@ -1,8 +1,40 @@
-__pycache__/
-*.py[cod]
-.env
-.venv/
+# Python
 venv/
+.venv/
+.qa-venv/
+__pycache__/
+**/__pycache__/
+**pycache**/
+*.pyc
+*.pyo
+*.pyd
+
+# Node / frontend
 node_modules/
 dist/
+build/
+
+# Local configuration
+.env
+.env.*
+
+# Logs and OS files
+*.log
 .DS_Store
+
+# Caches
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ML model caches / weights
+huggingface/
+.huggingface/
+models--*/
+*.safetensors
+*.bin
+*.ckpt
+*.pt
+*.pth
+*.onnx
