@@ -39,6 +39,15 @@ EXPLANATION_REASONS = {
     "no_risk_signals": "No obvious language, punctuation, or sourcing issues were detected by the rule engine.",
 }
 
+EXPLANATION_IMPACTS = {
+    "emotional_language": "Readers may react emotionally instead of checking whether the claim is supported.",
+    "all_caps": "The text can feel alarmist, which may reduce perceived professionalism and reliability.",
+    "excessive_punctuation": "The claim may appear exaggerated even if parts of it are accurate.",
+    "missing_sources": "Readers have fewer ways to verify the claim independently.",
+    "clickbait": "The framing can make the content feel optimized for attention rather than accuracy.",
+    "no_risk_signals": "The language appears more neutral, but factual verification is still required.",
+}
+
 
 def _split_sentences(text: str) -> list[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
@@ -54,6 +63,7 @@ def _append_unique(explanations: list[dict], signal_type: str, matched_text: str
         "type": signal_type,
         "text": matched_text.strip(),
         "reason": EXPLANATION_REASONS[signal_type],
+        "impact": EXPLANATION_IMPACTS[signal_type],
     }
     if item not in explanations:
         explanations.append(item)

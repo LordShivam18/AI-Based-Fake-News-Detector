@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 const API_BASE_URL = "http://localhost:8000";
 const HISTORY_KEY = "ai-trust-engine-history";
 const MAX_HISTORY_ITEMS = 10;
+const DEFAULT_UNCERTAINTY_NOTE =
+  "This tool provides AI-based analysis and may not be fully accurate.";
 
 const riskStyles = {
   LOW: "bg-emerald-100 text-emerald-800 border-emerald-200",
@@ -23,6 +25,11 @@ const explanationLabels = {
   missing_sources: "Missing sources",
   clickbait: "Clickbait pattern",
   no_risk_signals: "No obvious rule signals",
+};
+
+const explanationFallbacks = {
+  reason: "This signal can affect how readers interpret the credibility of the text.",
+  impact: "Readers may need more context before treating the claim as reliable.",
 };
 
 const breakdownLabels = {
@@ -48,16 +55,63 @@ function saveHistory(items) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, MAX_HISTORY_ITEMS)));
 }
 
+function getImprovement(result) {
+  return (
+    result.improvement || {
+      before_score: result.credibility_score || 0,
+      after_score: result.credibility_score || 0,
+      change: `${result.risk_level || "MEDIUM"} -> ${result.risk_level || "MEDIUM"}`,
+    }
+  );
+}
+
+function normalizeResult(result) {
+  const riskLevel = result.risk_level || "MEDIUM";
+  const credibilityScore = result.credibility_score ?? 0;
+
+  const normalized = {
+    ...result,
+    report_id: result.report_id || "local",
+    credibility_score: credibilityScore,
+    risk_level: riskLevel,
+    model_confidence: result.model_confidence ?? result.confidence ?? 0,
+    explanation: (result.explanation || []).map((item) => ({
+      ...item,
+      reason: item.reason || explanationFallbacks.reason,
+      impact: item.impact || explanationFallbacks.impact,
+    })),
+    breakdown: {
+      language_score: 0,
+      structure_score: 0,
+      source_score: 0,
+      source_note: "Source verification information is unavailable for this saved result.",
+      ...(result.breakdown || {}),
+    },
+    suggested_rewrite: result.suggested_rewrite || result.analyzed_text || "",
+    suggestions: result.suggestions || [],
+    uncertainty_note: result.uncertainty_note || DEFAULT_UNCERTAINTY_NOTE,
+    processing_time_ms: result.processing_time_ms ?? 0,
+    analyzed_text: result.analyzed_text || "",
+    source_type: result.source_type || "text",
+    source_url: result.source_url || "",
+  };
+
+  normalized.improvement = getImprovement(normalized);
+  return normalized;
+}
+
 function makeHistoryItem(result) {
+  const normalized = normalizeResult(result);
+
   return {
-    report_id: result.report_id,
-    risk_level: result.risk_level,
-    credibility_score: result.credibility_score,
-    source_type: result.source_type,
-    source_url: result.source_url,
-    preview: result.source_url || result.analyzed_text.slice(0, 96),
+    report_id: normalized.report_id,
+    risk_level: normalized.risk_level,
+    credibility_score: normalized.credibility_score,
+    source_type: normalized.source_type,
+    source_url: normalized.source_url,
+    preview: normalized.source_url || normalized.analyzed_text.slice(0, 96),
     created_at: new Date().toISOString(),
-    result,
+    result: normalized,
   };
 }
 
@@ -147,6 +201,15 @@ function Spinner() {
   );
 }
 
+function UncertaintyNotice({ note }) {
+  return (
+    <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 shadow-sm">
+      <p className="font-semibold">Responsible use note</p>
+      <p className="mt-1">{note || DEFAULT_UNCERTAINTY_NOTE}</p>
+    </section>
+  );
+}
+
 function ScoreSummary({ result }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition">
@@ -155,11 +218,18 @@ function ScoreSummary({ result }) {
           <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
             Score Summary
           </p>
-          <p className="mt-2 text-4xl font-bold">
+          <p
+            className="mt-2 text-4xl font-bold"
+            title="Credibility score combines model output with language, structure, and source-related signals. It is not a factual verdict."
+          >
             {(result.credibility_score * 100).toFixed(1)}%
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            Confidence {(result.confidence * 100).toFixed(1)}% · {result.processing_time_ms}ms
+            <span title="This reflects model certainty, not factual correctness.">
+              Model confidence {(result.model_confidence * 100).toFixed(1)}%
+            </span>
+            {" | "}
+            {result.processing_time_ms}ms
           </p>
         </div>
 
@@ -185,6 +255,8 @@ function ScoreSummary({ result }) {
 }
 
 function Breakdown({ breakdown }) {
+  const scoreKeys = ["language_score", "structure_score", "source_score"];
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -192,33 +264,47 @@ function Breakdown({ breakdown }) {
       </h2>
 
       <div className="mt-4 space-y-4">
-        {Object.entries(breakdown).map(([key, value]) => (
+        {scoreKeys.map((key) => (
           <div key={key}>
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-slate-700">
                 {breakdownLabels[key] || key}
               </span>
-              <span className="text-slate-500">{value}%</span>
+              <span className="text-slate-500">{breakdown[key]}%</span>
             </div>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
               <div
                 className="h-full rounded-full bg-sky-600 transition-all duration-700"
-                style={{ width: `${value}%` }}
+                style={{ width: `${breakdown[key]}%` }}
               />
             </div>
           </div>
         ))}
       </div>
+
+      {breakdown.source_note && (
+        <p className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {breakdown.source_note}
+        </p>
+      )}
     </section>
   );
 }
 
 function RewriteSuggestion({ result }) {
+  const improvement = result.improvement;
+  const improved = improvement.after_score > improvement.before_score;
+
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
         Rewrite Suggestion
       </h2>
+
+      <p className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">
+        {improved ? "Credibility improved" : "Credibility changed"} from{" "}
+        {improvement.change.replace("->", "to")}.
+      </p>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
@@ -264,6 +350,10 @@ function Explanation({ result }) {
             </p>
             <p className="mt-1 text-sm text-slate-700">{item.text}</p>
             <p className="mt-2 text-xs leading-5 text-slate-500">{item.reason}</p>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Why this matters
+            </p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{item.impact}</p>
           </article>
         ))}
       </div>
@@ -324,16 +414,19 @@ function App() {
   }, []);
 
   function applyResult(nextResult) {
-    setResult(nextResult);
-    setMode(nextResult.source_type || "text");
-    setText(nextResult.analyzed_text || "");
-    setUrl(nextResult.source_url || "");
+    const normalized = normalizeResult(nextResult);
+
+    setResult(normalized);
+    setMode(normalized.source_type || "text");
+    setText(normalized.analyzed_text || "");
+    setUrl(normalized.source_url || "");
   }
 
   function addToHistory(nextResult) {
+    const normalized = normalizeResult(nextResult);
     const nextHistory = [
-      makeHistoryItem(nextResult),
-      ...history.filter((item) => item.report_id !== nextResult.report_id),
+      makeHistoryItem(normalized),
+      ...history.filter((item) => item.report_id !== normalized.report_id),
     ].slice(0, MAX_HISTORY_ITEMS);
 
     setHistory(nextHistory);
@@ -487,6 +580,8 @@ function App() {
             </p>
           </header>
 
+          <UncertaintyNotice note={DEFAULT_UNCERTAINTY_NOTE} />
+
           <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-1">
               {["text", "url"].map((inputMode) => (
@@ -566,6 +661,7 @@ function App() {
           {result && (
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
               <div className="space-y-5">
+                <UncertaintyNotice note={result.uncertainty_note} />
                 <ScoreSummary result={result} />
                 <Breakdown breakdown={result.breakdown} />
                 <Explanation result={result} />

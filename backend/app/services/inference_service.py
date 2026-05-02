@@ -67,7 +67,7 @@ def analyze_text(text: str, explanation: Optional[list[dict]] = None) -> dict:
             "model_score": model_prediction["model_score"],
             "heuristic_score": heuristic_score,
             "final_score": credibility_score,
-            "confidence": model_prediction["confidence"],
+            "model_confidence": model_prediction["confidence"],
             "inference_time_ms": inference_time_ms,
         },
     )
@@ -75,6 +75,6 @@ def analyze_text(text: str, explanation: Optional[list[dict]] = None) -> dict:
     return {
         "credibility_score": credibility_score,
         "risk_level": _risk_level_from_score(credibility_score),
-        "confidence": model_prediction["confidence"],
+        "model_confidence": model_prediction["confidence"],
         "inference_time_ms": inference_time_ms,
     }

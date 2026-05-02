@@ -82,40 +82,51 @@ Example response:
   "report_id": "a1b2c3d4e5f6",
   "credibility_score": 0.3124,
   "risk_level": "HIGH",
-  "confidence": 0.9123,
+  "model_confidence": 0.9123,
   "explanation": [
     {
       "type": "emotional_language",
       "text": "BREAKING shocking claim!!!",
-      "reason": "Emotionally charged wording can make a claim feel persuasive before evidence is evaluated."
+      "reason": "Emotionally charged wording can make a claim feel persuasive before evidence is evaluated.",
+      "impact": "Readers may react emotionally instead of checking whether the claim is supported."
     },
     {
       "type": "all_caps",
       "text": "BREAKING",
-      "reason": "ALL CAPS is often used to amplify urgency or alarm rather than add verifiable detail."
+      "reason": "ALL CAPS is often used to amplify urgency or alarm rather than add verifiable detail.",
+      "impact": "The text can feel alarmist, which may reduce perceived professionalism and reliability."
     },
     {
       "type": "excessive_punctuation",
       "text": "!!!",
-      "reason": "Repeated punctuation can signal exaggeration or clickbait framing."
+      "reason": "Repeated punctuation can signal exaggeration or clickbait framing.",
+      "impact": "The claim may appear exaggerated even if parts of it are accurate."
     },
     {
       "type": "clickbait",
       "text": "BREAKING shocking claim!!!",
-      "reason": "Clickbait-style phrasing can reduce trust because it prioritizes reaction over evidence."
+      "reason": "Clickbait-style phrasing can reduce trust because it prioritizes reaction over evidence.",
+      "impact": "The framing can make the content feel optimized for attention rather than accuracy."
     }
   ],
   "breakdown": {
     "language_score": 35,
     "structure_score": 55,
-    "source_score": 90
+    "source_score": 60,
+    "source_note": "Source reference detected, but this tool has not independently verified it."
   },
-  "suggested_rewrite": "Claim. Officials reported by Reuters are investigating.",
+  "suggested_rewrite": "According to available information, officials reported by Reuters are investigating. Additional context may be needed before drawing a firm conclusion.",
   "suggestions": [
     "Use neutral, specific wording instead of emotional phrases.",
     "Use normal sentence case unless an acronym is required.",
     "Reduce repeated punctuation and let evidence carry the claim."
   ],
+  "improvement": {
+    "before_score": 0.3124,
+    "after_score": 0.5812,
+    "change": "HIGH -> MEDIUM"
+  },
+  "uncertainty_note": "This analysis is based on language patterns and may not reflect factual accuracy.",
   "processing_time_ms": 421,
   "analyzed_text": "BREAKING shocking claim!!! Officials reported by Reuters are investigating.",
   "source_type": "text",

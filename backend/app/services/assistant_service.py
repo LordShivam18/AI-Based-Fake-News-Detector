@@ -3,6 +3,9 @@ import re
 from app.services.explanation_service import EMOTIONALLY_CHARGED_WORDS, SOURCE_PATTERNS
 
 ACRONYMS_TO_KEEP = {"AI", "API", "BBC", "CNN", "FBI", "NASA", "UN", "USA", "WHO"}
+UNCERTAINTY_NOTE = (
+    "This analysis is based on language patterns and may not reflect factual accuracy."
+)
 
 
 def _clamp_score(score: int) -> int:
@@ -13,11 +16,54 @@ def _has_source(text: str) -> bool:
     return any(re.search(pattern, text, flags=re.IGNORECASE) for pattern in SOURCE_PATTERNS)
 
 
+def _sentence_case(text: str) -> str:
+    if not text:
+        return text
+
+    return re.sub(
+        r"(^|[.!?]\s+)([a-z])",
+        lambda match: match.group(1) + match.group(2).upper(),
+        text,
+    )
+
+
+def risk_level_from_score(score: float) -> str:
+    if score < 0.4:
+        return "HIGH"
+    if score <= 0.7:
+        return "MEDIUM"
+    return "LOW"
+
+
+def get_improvement(before_score: float, after_score: float) -> dict:
+    before_risk = risk_level_from_score(before_score)
+    after_risk = risk_level_from_score(after_score)
+
+    return {
+        "before_score": round(before_score, 4),
+        "after_score": round(after_score, 4),
+        "change": f"{before_risk} -> {after_risk}",
+    }
+
+
 def rewrite_text(text: str) -> str:
-    neutral_text = text.strip()
+    original_text = text.strip()
+    neutral_text = original_text
 
     emotional_pattern = re.compile(
         r"\b(" + "|".join(sorted(EMOTIONALLY_CHARGED_WORDS)) + r")\b",
+        flags=re.IGNORECASE,
+    )
+    neutral_text = re.sub(
+        r"\byou won't believe\b",
+        "",
+        neutral_text,
+        flags=re.IGNORECASE,
+    )
+    neutral_text = re.sub(
+        r"\btruth revealed\b",
+        "details reported",
+        neutral_text,
         flags=re.IGNORECASE,
     )
     neutral_text = emotional_pattern.sub("", neutral_text)
@@ -32,18 +78,38 @@ def rewrite_text(text: str) -> str:
     neutral_text = re.sub(r"!{2,}", ".", neutral_text)
     neutral_text = re.sub(r"\?{2,}", "?", neutral_text)
     neutral_text = re.sub(r"([!?]){1,}$", ".", neutral_text)
-    neutral_text = re.sub(r"\btruth revealed\b", "details reported", neutral_text, flags=re.IGNORECASE)
-    neutral_text = re.sub(r"\byou won't believe\b", "", neutral_text, flags=re.IGNORECASE)
+    neutral_text = re.sub(r"\s*[-:]\s*", " ", neutral_text)
     neutral_text = re.sub(r"\s+([,.!?])", r"\1", neutral_text)
     neutral_text = re.sub(r"\s{2,}", " ", neutral_text).strip()
+
+    if not re.search(r"[A-Za-z0-9]", neutral_text):
+        neutral_text = "The claim should be reviewed with verified context."
+
+    neutral_text = _sentence_case(neutral_text)
 
     if neutral_text and neutral_text[-1] not in ".!?":
         neutral_text += "."
 
-    if neutral_text:
-        neutral_text = neutral_text[0].upper() + neutral_text[1:]
+    has_source = _has_source(original_text)
+    word_count = len(re.findall(r"\b\w+\b", neutral_text))
 
-    return neutral_text or text.strip()
+    if neutral_text:
+        if has_source:
+            neutral_text = (
+                "According to available information, "
+                f"{neutral_text[0].lower() + neutral_text[1:]}"
+            )
+        else:
+            neutral_text = f"Reportedly, {neutral_text[0].lower() + neutral_text[1:]}"
+
+    if not has_source:
+        neutral_text = f"{neutral_text} No verified evidence confirms this yet."
+    elif word_count < 18:
+        neutral_text = (
+            f"{neutral_text} Additional context may be needed before drawing a firm conclusion."
+        )
+
+    return neutral_text or original_text
 
 
 def get_breakdown(text: str) -> dict:
@@ -75,12 +141,19 @@ def get_breakdown(text: str) -> dict:
     if average_sentence_length > 35:
         structure_score -= 15
 
-    source_score = 90 if _has_source(text) else 35
+    has_source = _has_source(text)
+    source_score = 60 if has_source else 20
+    source_note = (
+        "Source reference detected, but this tool has not independently verified it."
+        if has_source
+        else "No verifiable sources detected."
+    )
 
     return {
         "language_score": _clamp_score(language_score),
         "structure_score": _clamp_score(structure_score),
         "source_score": _clamp_score(source_score),
+        "source_note": source_note,
     }
 
 

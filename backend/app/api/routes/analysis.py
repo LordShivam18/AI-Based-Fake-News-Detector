@@ -7,8 +7,10 @@ from fastapi.responses import JSONResponse
 
 from app.schemas.analysis import AnalyzeRequest, AnalyzeResponse
 from app.services.assistant_service import (
+    UNCERTAINTY_NOTE,
     generate_suggestions,
     get_breakdown,
+    get_improvement,
     rewrite_text,
 )
 from app.services.explanation_service import generate_explanation
@@ -60,17 +62,28 @@ async def analyze_news(request: AnalyzeRequest):
         suggested_rewrite = rewrite_text(clean_text)
         suggestions = generate_suggestions(clean_text, explanation)
         prediction = analyze_text(clean_text, explanation=explanation)
+        rewrite_explanation = generate_explanation(suggested_rewrite)
+        rewrite_prediction = analyze_text(
+            suggested_rewrite,
+            explanation=rewrite_explanation,
+        )
+        improvement = get_improvement(
+            prediction["credibility_score"],
+            rewrite_prediction["credibility_score"],
+        )
         processing_time_ms = int((perf_counter() - start) * 1000)
 
         report = save_report(
             {
                 "credibility_score": prediction["credibility_score"],
                 "risk_level": prediction["risk_level"],
-                "confidence": prediction["confidence"],
+                "model_confidence": prediction["model_confidence"],
                 "explanation": explanation,
                 "breakdown": breakdown,
                 "suggested_rewrite": suggested_rewrite,
                 "suggestions": suggestions,
+                "improvement": improvement,
+                "uncertainty_note": UNCERTAINTY_NOTE,
                 "processing_time_ms": processing_time_ms,
                 "analyzed_text": clean_text,
                 "source_type": source_type,
@@ -82,11 +95,13 @@ async def analyze_news(request: AnalyzeRequest):
             report_id=report["report_id"],
             credibility_score=prediction["credibility_score"],
             risk_level=prediction["risk_level"],
-            confidence=prediction["confidence"],
+            model_confidence=prediction["model_confidence"],
             explanation=explanation,
             breakdown=breakdown,
             suggested_rewrite=suggested_rewrite,
             suggestions=suggestions,
+            improvement=improvement,
+            uncertainty_note=UNCERTAINTY_NOTE,
             processing_time_ms=processing_time_ms,
             analyzed_text=clean_text,
             source_type=source_type,
