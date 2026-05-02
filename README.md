@@ -1,6 +1,6 @@
 # AI Trust Engine
 
-Phase 1 MVP for a SaaS-ready misinformation detection system.
+Phase 1 MVP misinformation detection system.
 
 ## Folder Structure
 
