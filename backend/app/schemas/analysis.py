@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,8 @@ ExplanationType = Literal[
 
 
 class AnalyzeRequest(BaseModel):
-    text: str
+    text: Optional[str] = None
+    url: Optional[str] = None
 
 
 class ExplanationItem(BaseModel):
@@ -23,8 +24,12 @@ class ExplanationItem(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
+    report_id: str
     credibility_score: float = Field(..., ge=0, le=1)
     risk_level: RiskLevel
     confidence: float = Field(..., ge=0, le=1)
     explanation: List[ExplanationItem]
     processing_time_ms: int
+    analyzed_text: str
+    source_type: Literal["text", "url"]
+    source_url: Optional[str] = None

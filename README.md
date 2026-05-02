@@ -21,6 +21,8 @@ backend/
     services/
       explanation_service.py
       inference_service.py
+      report_store.py
+      url_extraction_service.py
     utils/
     main.py
   requirements.txt
@@ -64,10 +66,19 @@ curl -X POST http://localhost:8000/analyze `
   -d "{\"text\":\"BREAKING shocking claim!!! Officials reported by Reuters are investigating.\"}"
 ```
 
+Analyze a URL:
+
+```powershell
+curl -X POST http://localhost:8000/analyze `
+  -H "Content-Type: application/json" `
+  -d "{\"url\":\"https://example.com/news/article\"}"
+```
+
 Example response:
 
 ```json
 {
+  "report_id": "a1b2c3d4e5f6",
   "credibility_score": 0.3124,
   "risk_level": "HIGH",
   "confidence": 0.9123,
@@ -89,8 +100,23 @@ Example response:
       "text": "BREAKING shocking claim!!!"
     }
   ],
-  "processing_time_ms": 421
+  "processing_time_ms": 421,
+  "analyzed_text": "BREAKING shocking claim!!! Officials reported by Reuters are investigating.",
+  "source_type": "text",
+  "source_url": null
 }
+```
+
+Fetch a shareable report:
+
+```powershell
+curl http://localhost:8000/report/a1b2c3d4e5f6
+```
+
+Frontend report URL example:
+
+```text
+http://localhost:5173/report/a1b2c3d4e5f6
 ```
 
 Empty input is rejected with a `400` error response.
