@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000").replace(
+  /\/$/,
+  "",
+);
 const HISTORY_KEY = "ai-trust-engine-history";
 const MAX_HISTORY_ITEMS = 10;
 const DEFAULT_UNCERTAINTY_NOTE =
@@ -183,6 +186,14 @@ function makeHistoryItem(result) {
     created_at: new Date().toISOString(),
     result: normalized,
   };
+}
+
+function getFriendlyRequestError(error, fallbackMessage) {
+  if (error instanceof TypeError) {
+    return `Backend is unavailable at ${API_BASE_URL}. Start the API and retry.`;
+  }
+
+  return error?.message || fallbackMessage;
 }
 
 function getHighlightRanges(text, explanation) {
@@ -927,7 +938,7 @@ function App() {
         window.history.pushState({}, "", `/report/${payload.report_id}`);
       }
     } catch (requestError) {
-      setError(requestError.message);
+      setError(getFriendlyRequestError(requestError, "Report could not be loaded."));
     } finally {
       setIsLoading(false);
     }
@@ -959,7 +970,7 @@ function App() {
       setScrollToResults(Boolean(options.scroll));
       window.history.pushState({}, "", `/report/${nextResult.report_id}`);
     } catch (requestError) {
-      setError(requestError.message);
+      setError(getFriendlyRequestError(requestError, "Analysis request failed. Please retry."));
     } finally {
       setIsLoading(false);
     }
