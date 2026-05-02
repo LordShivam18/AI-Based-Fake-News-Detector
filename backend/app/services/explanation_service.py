@@ -30,6 +30,15 @@ HEURISTIC_PENALTIES = {
     "clickbait": 0.15,
 }
 
+EXPLANATION_REASONS = {
+    "emotional_language": "Emotionally charged wording can make a claim feel persuasive before evidence is evaluated.",
+    "all_caps": "ALL CAPS is often used to amplify urgency or alarm rather than add verifiable detail.",
+    "excessive_punctuation": "Repeated punctuation can signal exaggeration or clickbait framing.",
+    "missing_sources": "Credible claims are easier to verify when they include links, citations, or named sources.",
+    "clickbait": "Clickbait-style phrasing can reduce trust because it prioritizes reaction over evidence.",
+    "no_risk_signals": "No obvious language, punctuation, or sourcing issues were detected by the rule engine.",
+}
+
 
 def _split_sentences(text: str) -> list[str]:
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
@@ -41,7 +50,11 @@ def _has_source(text: str) -> bool:
 
 
 def _append_unique(explanations: list[dict], signal_type: str, matched_text: str) -> None:
-    item = {"type": signal_type, "text": matched_text.strip()}
+    item = {
+        "type": signal_type,
+        "text": matched_text.strip(),
+        "reason": EXPLANATION_REASONS[signal_type],
+    }
     if item not in explanations:
         explanations.append(item)
 

@@ -6,6 +6,11 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.schemas.analysis import AnalyzeRequest, AnalyzeResponse
+from app.services.assistant_service import (
+    generate_suggestions,
+    get_breakdown,
+    rewrite_text,
+)
 from app.services.explanation_service import generate_explanation
 from app.services.inference_service import (
     InferenceTimeoutError,
@@ -51,6 +56,9 @@ async def analyze_news(request: AnalyzeRequest):
     try:
         clean_text, source_type, source_url = _resolve_analysis_input(request)
         explanation = generate_explanation(clean_text)
+        breakdown = get_breakdown(clean_text)
+        suggested_rewrite = rewrite_text(clean_text)
+        suggestions = generate_suggestions(clean_text, explanation)
         prediction = analyze_text(clean_text, explanation=explanation)
         processing_time_ms = int((perf_counter() - start) * 1000)
 
@@ -60,6 +68,9 @@ async def analyze_news(request: AnalyzeRequest):
                 "risk_level": prediction["risk_level"],
                 "confidence": prediction["confidence"],
                 "explanation": explanation,
+                "breakdown": breakdown,
+                "suggested_rewrite": suggested_rewrite,
+                "suggestions": suggestions,
                 "processing_time_ms": processing_time_ms,
                 "analyzed_text": clean_text,
                 "source_type": source_type,
@@ -73,6 +84,9 @@ async def analyze_news(request: AnalyzeRequest):
             risk_level=prediction["risk_level"],
             confidence=prediction["confidence"],
             explanation=explanation,
+            breakdown=breakdown,
+            suggested_rewrite=suggested_rewrite,
+            suggestions=suggestions,
             processing_time_ms=processing_time_ms,
             analyzed_text=clean_text,
             source_type=source_type,

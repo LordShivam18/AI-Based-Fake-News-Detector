@@ -25,6 +25,12 @@ const explanationLabels = {
   no_risk_signals: "No obvious rule signals",
 };
 
+const breakdownLabels = {
+  language_score: "Language",
+  structure_score: "Structure",
+  source_score: "Sources",
+};
+
 function getRouteReportId() {
   const match = window.location.pathname.match(/^\/report\/([^/]+)/);
   return match?.[1] || "";
@@ -51,6 +57,7 @@ function makeHistoryItem(result) {
     source_url: result.source_url,
     preview: result.source_url || result.analyzed_text.slice(0, 96),
     created_at: new Date().toISOString(),
+    result,
   };
 }
 
@@ -134,6 +141,156 @@ function HighlightedText({ text, explanation }) {
   return <p>{parts}</p>;
 }
 
+function Spinner() {
+  return (
+    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+  );
+}
+
+function ScoreSummary({ result }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Score Summary
+          </p>
+          <p className="mt-2 text-4xl font-bold">
+            {(result.credibility_score * 100).toFixed(1)}%
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            Confidence {(result.confidence * 100).toFixed(1)}% · {result.processing_time_ms}ms
+          </p>
+        </div>
+
+        <span
+          className={`rounded-full border px-3 py-1 text-sm font-semibold ${
+            riskStyles[result.risk_level] || riskStyles.MEDIUM
+          }`}
+        >
+          {result.risk_level} RISK
+        </span>
+      </div>
+
+      <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${
+            riskBarStyles[result.risk_level] || riskBarStyles.MEDIUM
+          }`}
+          style={{ width: `${Math.max(result.credibility_score * 100, 4)}%` }}
+        />
+      </div>
+    </section>
+  );
+}
+
+function Breakdown({ breakdown }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        Breakdown
+      </h2>
+
+      <div className="mt-4 space-y-4">
+        {Object.entries(breakdown).map(([key, value]) => (
+          <div key={key}>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-slate-700">
+                {breakdownLabels[key] || key}
+              </span>
+              <span className="text-slate-500">{value}%</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-sky-600 transition-all duration-700"
+                style={{ width: `${value}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RewriteSuggestion({ result }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        Rewrite Suggestion
+      </h2>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-700">Original</p>
+          <p className="mt-2 max-h-72 overflow-auto text-sm leading-6 text-slate-700">
+            {result.analyzed_text}
+          </p>
+        </div>
+
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-800">Improved</p>
+          <p className="mt-2 max-h-72 overflow-auto text-sm leading-6 text-slate-800">
+            {result.suggested_rewrite}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Explanation({ result }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        Explanation
+      </h2>
+
+      <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4">
+        <h3 className="text-sm font-semibold text-slate-700">Highlighted text</h3>
+        <div className="mt-3 max-h-80 overflow-auto text-sm leading-7 text-slate-700">
+          <HighlightedText text={result.analyzed_text} explanation={result.explanation} />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        {result.explanation.map((item, index) => (
+          <article
+            key={`${item.type}-${item.text}-${index}`}
+            className="rounded-md border border-slate-200 p-3 transition hover:border-sky-200 hover:bg-sky-50"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              {explanationLabels[item.type] || item.type}
+            </p>
+            <p className="mt-1 text-sm text-slate-700">{item.text}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.reason}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ActionTips({ suggestions }) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        Action Tips
+      </h2>
+      <ul className="mt-4 space-y-2">
+        {suggestions.map((suggestion) => (
+          <li
+            key={suggestion}
+            className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+          >
+            {suggestion}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function App() {
   const [mode, setMode] = useState("text");
   const [text, setText] = useState("");
@@ -166,6 +323,13 @@ function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  function applyResult(nextResult) {
+    setResult(nextResult);
+    setMode(nextResult.source_type || "text");
+    setText(nextResult.analyzed_text || "");
+    setUrl(nextResult.source_url || "");
+  }
+
   function addToHistory(nextResult) {
     const nextHistory = [
       makeHistoryItem(nextResult),
@@ -174,6 +338,16 @@ function App() {
 
     setHistory(nextHistory);
     saveHistory(nextHistory);
+  }
+
+  function loadHistoryItem(item) {
+    if (item.result) {
+      applyResult(item.result);
+      window.history.pushState({}, "", `/report/${item.report_id}`);
+      return;
+    }
+
+    loadReport(item.report_id);
   }
 
   async function loadReport(reportId, options = { updatePath: true }) {
@@ -188,10 +362,7 @@ function App() {
         throw new Error(payload?.error || "Report not found.");
       }
 
-      setResult(payload);
-      setMode(payload.source_type || "text");
-      setText(payload.analyzed_text || "");
-      setUrl(payload.source_url || "");
+      applyResult(payload);
 
       if (options.updatePath) {
         window.history.pushState({}, "", `/report/${payload.report_id}`);
@@ -238,9 +409,7 @@ function App() {
         throw new Error(nextResult?.error || "Analysis request failed.");
       }
 
-      setResult(nextResult);
-      setText(nextResult.analyzed_text || text);
-      setUrl(nextResult.source_url || url);
+      applyResult(nextResult);
       addToHistory(nextResult);
       window.history.pushState({}, "", `/report/${nextResult.report_id}`);
     } catch (requestError) {
@@ -264,7 +433,7 @@ function App() {
         <aside className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Local history
+              Saved analyses
             </h2>
             <span className="text-xs text-slate-400">{history.length}/10</span>
           </div>
@@ -272,7 +441,7 @@ function App() {
           <div className="mt-4 space-y-2">
             {history.length === 0 && (
               <p className="text-sm text-slate-500">
-                Your recent analyses will appear here.
+                Saved comparisons will appear here after your first analysis.
               </p>
             )}
 
@@ -280,7 +449,7 @@ function App() {
               <button
                 key={item.report_id}
                 type="button"
-                onClick={() => loadReport(item.report_id)}
+                onClick={() => loadHistoryItem(item)}
                 className="w-full rounded-md border border-slate-200 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -298,6 +467,9 @@ function App() {
                 <p className="mt-2 line-clamp-2 text-sm text-slate-700">
                   {item.preview}
                 </p>
+                <p className="mt-2 text-xs font-medium text-sky-700">
+                  View comparison
+                </p>
               </button>
             ))}
           </div>
@@ -308,10 +480,10 @@ function App() {
             <p className="text-sm font-semibold uppercase tracking-wide text-sky-700">
               AI Trust Engine
             </p>
-            <h1 className="mt-2 text-3xl font-bold">Analyze a claim, article, or URL</h1>
+            <h1 className="mt-2 text-3xl font-bold">Interactive credibility assistant</h1>
             <p className="mt-2 max-w-3xl text-slate-600">
-              Review credibility risk, model confidence, and the exact language that
-              triggered explainability signals.
+              Analyze a claim, understand the credibility signals, and get a neutral
+              rewrite plus concrete steps to improve trust.
             </p>
           </header>
 
@@ -365,10 +537,11 @@ function App() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                className="rounded-md bg-sky-700 px-4 py-2 font-medium text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                className="inline-flex items-center gap-2 rounded-md bg-sky-700 px-4 py-2 font-medium text-white transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                 onClick={handleAnalyze}
                 disabled={isLoading}
               >
+                {isLoading && <Spinner />}
                 {isLoading ? "Analyzing..." : "Analyze"}
               </button>
 
@@ -391,89 +564,25 @@ function App() {
           </section>
 
           {result && (
-            <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">Credibility score</p>
-                    <p className="text-4xl font-bold">
-                      {(result.credibility_score * 100).toFixed(1)}%
-                    </p>
-                  </div>
-
-                  <span
-                    className={`rounded-full border px-3 py-1 text-sm font-semibold ${
-                      riskStyles[result.risk_level] || riskStyles.MEDIUM
-                    }`}
-                  >
-                    {result.risk_level} RISK
-                  </span>
-                </div>
-
-                <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      riskBarStyles[result.risk_level] || riskBarStyles.MEDIUM
-                    }`}
-                    style={{ width: `${Math.max(result.credibility_score * 100, 4)}%` }}
-                  />
-                </div>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-md border border-slate-200 p-3">
-                    <p className="text-sm text-slate-500">Confidence</p>
-                    <p className="text-2xl font-semibold">
-                      {(result.confidence * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                  <div className="rounded-md border border-slate-200 p-3">
-                    <p className="text-sm text-slate-500">Processing</p>
-                    <p className="text-2xl font-semibold">{result.processing_time_ms}ms</p>
-                  </div>
-                  <div className="rounded-md border border-slate-200 p-3">
-                    <p className="text-sm text-slate-500">Source</p>
-                    <p className="text-2xl font-semibold capitalize">{result.source_type}</p>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-4">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                    Highlighted text
-                  </h2>
-                  <div className="mt-3 max-h-96 overflow-auto text-sm leading-7 text-slate-700">
-                    <HighlightedText
-                      text={result.analyzed_text}
-                      explanation={result.explanation}
-                    />
-                  </div>
-                </div>
+            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-5">
+                <ScoreSummary result={result} />
+                <Breakdown breakdown={result.breakdown} />
+                <Explanation result={result} />
+                <RewriteSuggestion result={result} />
               </div>
 
-              <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  Explanation
-                </h2>
+              <div className="space-y-5">
+                <ActionTips suggestions={result.suggestions} />
 
-                <div className="mt-3 space-y-3">
-                  {result.explanation.map((item, index) => (
-                    <article
-                      key={`${item.type}-${item.text}-${index}`}
-                      className="rounded-md border border-slate-200 p-3 transition hover:border-sky-200 hover:bg-sky-50"
-                    >
-                      <p className="text-sm font-semibold text-slate-900">
-                        {explanationLabels[item.type] || item.type}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-600">{item.text}</p>
-                    </article>
-                  ))}
-                </div>
-
-                <div className="mt-5 rounded-md border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-sm font-semibold text-slate-700">Shareable report</p>
-                  <p className="mt-1 break-all text-sm text-sky-800">{reportUrl}</p>
-                </div>
-              </aside>
-            </section>
+                <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    Shareable Report
+                  </h2>
+                  <p className="mt-3 break-all text-sm text-sky-800">{reportUrl}</p>
+                </section>
+              </div>
+            </div>
           )}
         </section>
       </div>

@@ -21,6 +21,7 @@ backend/
     services/
       explanation_service.py
       inference_service.py
+      assistant_service.py
       report_store.py
       url_extraction_service.py
     utils/
@@ -85,20 +86,35 @@ Example response:
   "explanation": [
     {
       "type": "emotional_language",
-      "text": "BREAKING shocking claim!!!"
+      "text": "BREAKING shocking claim!!!",
+      "reason": "Emotionally charged wording can make a claim feel persuasive before evidence is evaluated."
     },
     {
       "type": "all_caps",
-      "text": "BREAKING"
+      "text": "BREAKING",
+      "reason": "ALL CAPS is often used to amplify urgency or alarm rather than add verifiable detail."
     },
     {
       "type": "excessive_punctuation",
-      "text": "!!!"
+      "text": "!!!",
+      "reason": "Repeated punctuation can signal exaggeration or clickbait framing."
     },
     {
       "type": "clickbait",
-      "text": "BREAKING shocking claim!!!"
+      "text": "BREAKING shocking claim!!!",
+      "reason": "Clickbait-style phrasing can reduce trust because it prioritizes reaction over evidence."
     }
+  ],
+  "breakdown": {
+    "language_score": 35,
+    "structure_score": 55,
+    "source_score": 90
+  },
+  "suggested_rewrite": "Claim. Officials reported by Reuters are investigating.",
+  "suggestions": [
+    "Use neutral, specific wording instead of emotional phrases.",
+    "Use normal sentence case unless an acronym is required.",
+    "Reduce repeated punctuation and let evidence carry the claim."
   ],
   "processing_time_ms": 421,
   "analyzed_text": "BREAKING shocking claim!!! Officials reported by Reuters are investigating.",

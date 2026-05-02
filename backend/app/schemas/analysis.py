@@ -21,6 +21,13 @@ class AnalyzeRequest(BaseModel):
 class ExplanationItem(BaseModel):
     type: ExplanationType
     text: str
+    reason: str
+
+
+class CredibilityBreakdown(BaseModel):
+    language_score: int = Field(..., ge=0, le=100)
+    structure_score: int = Field(..., ge=0, le=100)
+    source_score: int = Field(..., ge=0, le=100)
 
 
 class AnalyzeResponse(BaseModel):
@@ -29,6 +36,9 @@ class AnalyzeResponse(BaseModel):
     risk_level: RiskLevel
     confidence: float = Field(..., ge=0, le=1)
     explanation: List[ExplanationItem]
+    breakdown: CredibilityBreakdown
+    suggested_rewrite: str
+    suggestions: List[str]
     processing_time_ms: int
     analyzed_text: str
     source_type: Literal["text", "url"]
