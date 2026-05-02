@@ -6,6 +6,8 @@ Here’s the clean way to set up collaboration so each person works in their own
 - Go to your GitHub repo → **Settings** → **Collaborators & teams**.
 - Add their GitHub username/email.
 - They’ll get an invite to join.
+
+- 
 (FOR TEAM MEMBERS)
 ### 2. **Clone the Repo**
 Each collaborator should:
