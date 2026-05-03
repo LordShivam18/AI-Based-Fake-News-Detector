@@ -1,4 +1,4 @@
-Here’s the clean way to set up collaboration so each person works in their own branch while keeping the main repo intact:
+
 
 ## 🔑 Steps for Adding a Collaborator & Branch Workflow
 
