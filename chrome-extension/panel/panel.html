@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Full Analysis | AI Credibility Assistant</title>
+    <link rel="stylesheet" href="panel.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <img src="../assets/logo.svg" alt="" class="brand-logo">
+        <div>
+          <h1>AI Credibility Assistant</h1>
+          <p id="sourceLabel">Full analysis</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="analyzeAgainButton" type="button">Analyze Again</button>
+        <button id="highlightButton" type="button">Apply Highlights</button>
+        <button id="clearButton" type="button">Clear Highlights</button>
+      </div>
+    </header>
+
+    <main id="emptyState" class="empty-state" hidden>
+      <h2>No analysis found</h2>
+      <p>Open a webpage, use the extension popup, then come back here for the detailed report.</p>
+    </main>
+
+    <main id="report" class="report-shell" hidden>
+      <section class="overview">
+        <div class="score-card">
+          <span id="riskBadge" class="risk-badge">Risk</span>
+          <strong id="scoreValue">--</strong>
+          <p>Credibility score</p>
+        </div>
+        <div class="meta-grid">
+          <div>
+            <span>Model confidence</span>
+            <strong id="confidenceValue">--</strong>
+          </div>
+          <div>
+            <span>Processing time</span>
+            <strong id="processingValue">--</strong>
+          </div>
+          <div>
+            <span>Extracted text</span>
+            <strong id="extractionValue">--</strong>
+          </div>
+          <div>
+            <span>Highlights</span>
+            <strong id="highlightValue">--</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <article class="panel-card">
+          <div class="section-heading">
+            <h2>Credibility Breakdown</h2>
+            <p id="sourceNote"></p>
+          </div>
+          <div id="breakdownList" class="breakdown-list"></div>
+        </article>
+
+        <article class="panel-card">
+          <div class="section-heading">
+            <h2>Highlighted Issues</h2>
+            <p>Signals detected by the backend explanation engine.</p>
+          </div>
+          <div id="explanationList" class="explanation-list"></div>
+        </article>
+
+        <article class="panel-card">
+          <div class="section-heading">
+            <h2>Suggested Rewrite</h2>
+            <p id="improvementText"></p>
+          </div>
+          <div id="rewriteText" class="rewrite-box"></div>
+        </article>
+
+        <article class="panel-card">
+          <div class="section-heading">
+            <h2>Improvement Summary</h2>
+            <p id="uncertaintyNote"></p>
+          </div>
+          <ul id="suggestionList" class="suggestion-list"></ul>
+        </article>
+
+        <article class="panel-card wide">
+          <div class="section-heading">
+            <h2>Analyzed Excerpt</h2>
+            <p id="analyzedMeta"></p>
+          </div>
+          <pre id="analyzedText" class="analyzed-text"></pre>
+        </article>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="panel.js"></script>
+  </body>
+</html>

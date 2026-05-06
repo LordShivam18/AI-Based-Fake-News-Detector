@@ -1,0 +1,28 @@
+.aica-credibility-highlight {
+  border-bottom: 2px solid rgba(20, 20, 20, 0.18) !important;
+  border-radius: 3px !important;
+  box-decoration-break: clone !important;
+  -webkit-box-decoration-break: clone !important;
+  padding: 0 2px !important;
+  transition: background-color 120ms ease, box-shadow 120ms ease !important;
+}
+
+.aica-credibility-highlight--emotional_language {
+  background: rgba(254, 240, 138, 0.72) !important;
+  box-shadow: inset 0 -2px 0 rgba(202, 138, 4, 0.45) !important;
+}
+
+.aica-credibility-highlight--clickbait {
+  background: rgba(254, 202, 202, 0.8) !important;
+  box-shadow: inset 0 -2px 0 rgba(220, 38, 38, 0.52) !important;
+}
+
+.aica-credibility-highlight--all_caps,
+.aica-credibility-highlight--excessive_punctuation {
+  background: rgba(254, 215, 170, 0.82) !important;
+  box-shadow: inset 0 -2px 0 rgba(234, 88, 12, 0.48) !important;
+}
+
+.aica-credibility-highlight:hover {
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.12), inset 0 -2px 0 rgba(15, 23, 42, 0.24) !important;
+}

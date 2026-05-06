@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Credibility Assistant</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="../assets/logo.svg" alt="" class="brand-logo">
+          <div>
+            <h1>Credibility Assistant</h1>
+            <p id="pageLabel">Ready to analyze this page</p>
+          </div>
+        </div>
+        <span id="connectionBadge" class="connection-badge">Local</span>
+      </header>
+
+      <section id="errorCard" class="message message-error" hidden>
+        <strong>Analysis unavailable</strong>
+        <p id="errorText"></p>
+      </section>
+
+      <section id="emptyState" class="empty-state">
+        <div class="empty-mark"></div>
+        <h2>Analyze visible page content</h2>
+        <p>Extract the article text, score credibility, and highlight risky language on the page.</p>
+      </section>
+
+      <section id="loadingState" class="loading-state" hidden>
+        <div class="spinner"></div>
+        <div>
+          <h2>Analyzing page</h2>
+          <p>Extracting visible text and checking credibility signals.</p>
+        </div>
+      </section>
+
+      <section id="resultCard" class="result-card" hidden>
+        <div class="score-row">
+          <div id="scoreRing" class="score-ring" style="--score-angle: 0deg;">
+            <span id="scoreValue">--</span>
+            <small>score</small>
+          </div>
+          <div class="score-copy">
+            <span id="riskBadge" class="risk-badge">Risk</span>
+            <h2 id="summaryTitle">Credibility analysis</h2>
+            <p id="summaryText">No summary yet.</p>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div>
+            <span>Confidence</span>
+            <strong id="confidenceValue">--</strong>
+          </div>
+          <div>
+            <span>Processing</span>
+            <strong id="processingValue">--</strong>
+          </div>
+          <div>
+            <span>Highlighted</span>
+            <strong id="highlightValue">--</strong>
+          </div>
+        </div>
+
+        <div class="issue-list" id="issueList"></div>
+      </section>
+
+      <section class="actions">
+        <button id="analyzeButton" class="primary-button" type="button">Analyze This Page</button>
+        <button id="viewButton" class="secondary-button" type="button" disabled>View Full Analysis</button>
+      </section>
+
+      <section class="secondary-actions">
+        <button id="rehighlightButton" type="button" disabled>Re-apply Highlights</button>
+        <button id="clearButton" type="button" disabled>Clear Highlights</button>
+      </section>
+
+      <details class="settings-panel">
+        <summary>Backend settings</summary>
+        <label for="apiBaseInput">API base URL</label>
+        <div class="settings-row">
+          <input id="apiBaseInput" type="url" spellcheck="false" placeholder="http://localhost:8000">
+          <button id="saveSettingsButton" type="button">Save</button>
+        </div>
+        <p id="settingsStatus" class="settings-status"></p>
+      </details>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>
