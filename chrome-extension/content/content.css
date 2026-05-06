@@ -26,3 +26,110 @@
 .aica-credibility-highlight:hover {
   box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.12), inset 0 -2px 0 rgba(15, 23, 42, 0.24) !important;
 }
+
+.aica-floating-badge {
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid rgba(15, 23, 42, 0.13) !important;
+  border-left: 4px solid #64748b !important;
+  border-radius: 8px !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18) !important;
+  color: #14213d !important;
+  display: grid !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  gap: 9px !important;
+  grid-template-columns: 10px minmax(0, 1fr) 22px !important;
+  line-height: 1.2 !important;
+  max-width: min(260px, calc(100vw - 24px)) !important;
+  min-width: 190px !important;
+  padding: 9px 8px 9px 10px !important;
+  position: fixed !important;
+  top: 16px;
+  right: 16px;
+  z-index: 2147483647 !important;
+}
+
+.aica-floating-badge--low {
+  border-left-color: #12805c !important;
+}
+
+.aica-floating-badge--medium {
+  border-left-color: #b7791f !important;
+}
+
+.aica-floating-badge--high {
+  border-left-color: #c2413a !important;
+}
+
+.aica-floating-badge--unknown {
+  border-left-color: #64748b !important;
+}
+
+.aica-floating-badge--dragging {
+  user-select: none !important;
+}
+
+.aica-floating-badge__grip {
+  align-self: stretch !important;
+  cursor: move !important;
+  min-height: 36px !important;
+  position: relative !important;
+}
+
+.aica-floating-badge__grip::before {
+  background:
+    radial-gradient(circle, rgba(100, 116, 139, 0.75) 1.4px, transparent 1.8px) 0 0 / 5px 5px !important;
+  content: "" !important;
+  inset: 5px 0 !important;
+  position: absolute !important;
+}
+
+.aica-floating-badge__content {
+  display: grid !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+
+.aica-floating-badge__label,
+.aica-floating-badge__meta {
+  color: #64748b !important;
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.aica-floating-badge__value {
+  color: #14213d !important;
+  display: block !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+.aica-floating-badge__close {
+  align-items: center !important;
+  align-self: start !important;
+  background: #f1f5f9 !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 999px !important;
+  color: #475569 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  font: 700 16px/1 Arial, sans-serif !important;
+  height: 22px !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  width: 22px !important;
+}
+
+.aica-floating-badge__close:hover {
+  background: #e2e8f0 !important;
+}

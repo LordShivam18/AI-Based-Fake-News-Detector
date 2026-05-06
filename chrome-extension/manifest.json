@@ -13,6 +13,7 @@
   },
   "permissions": [
     "activeTab",
+    "contextMenus",
     "scripting",
     "storage",
     "tabs"
@@ -30,6 +31,7 @@
       "js": [
         "content/extractor.js",
         "content/highlighter.js",
+        "content/badge.js",
         "content/contentScript.js"
       ],
       "css": [

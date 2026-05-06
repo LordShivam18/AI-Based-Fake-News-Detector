@@ -133,14 +133,15 @@ function renderState(state) {
   const score = Number(analysis.credibility_score || 0);
   const risk = String(analysis.risk_level || "UNKNOWN").toLowerCase();
   const issues = (analysis.explanation || []).filter((item) => item.type !== "no_risk_signals");
+  const sourceLabel = state.source?.type === "selection" ? "Selected text" : "Page";
 
   elements.scoreValue.textContent = formatPercent(score);
   elements.scoreRing.style.setProperty("--score-angle", `${Math.round(score * 360)}deg`);
   elements.riskBadge.textContent = `${analysis.risk_level || "UNKNOWN"} risk`;
   elements.riskBadge.className = `risk-badge risk-${risk}`;
   elements.summaryTitle.textContent = issues.length
-    ? `${issues.length} issue${issues.length === 1 ? "" : "s"} detected`
-    : "No obvious risk signals";
+    ? `${sourceLabel}: ${issues.length} issue${issues.length === 1 ? "" : "s"} detected`
+    : `${sourceLabel}: no obvious risk signals`;
   elements.summaryText.textContent = summarizeExplanation(analysis);
   elements.confidenceValue.textContent = formatPercent(analysis.model_confidence);
   elements.processingValue.textContent = `${analysis.processing_time_ms || 0} ms`;

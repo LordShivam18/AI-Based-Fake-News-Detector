@@ -34,7 +34,7 @@ function bindEvents() {
   elements.analyzeAgainButton.addEventListener("click", async () => {
     setButtonsDisabled(true);
     showToast("Running a fresh analysis...");
-    const response = await sendMessage({ type: "AICA_ANALYZE_TAB", tabId });
+    const response = await sendMessage({ type: "AICA_ANALYZE_SAVED_CONTEXT", tabId });
     setButtonsDisabled(false);
     if (!response.ok) {
       showToast(response.error || "Analysis failed.");
@@ -198,6 +198,9 @@ function emptyListItem(message) {
 
 function buildAnalyzedMeta(state) {
   const bits = [];
+  if (state.source?.label) {
+    bits.push(state.source.label);
+  }
   if (state.page?.url || state.tab?.url) {
     bits.push(state.page?.url || state.tab?.url);
   }

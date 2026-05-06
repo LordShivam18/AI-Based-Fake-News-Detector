@@ -38,6 +38,8 @@ chrome-extension/
   - ALL CAPS and repeated punctuation: orange
 - Opens a full analysis page with breakdowns, explanation items, rewrite suggestions, improvement summary, and analyzed excerpt.
 - Stores the latest analysis per tab with `chrome.storage.local`.
+- Shows a dismissible, draggable floating credibility badge after analysis.
+- Adds a right-click `Analyze with Credibility Assistant` action for selected text.
 
 ## Install Locally
 

@@ -8,7 +8,14 @@
     try {
       switch (message?.type) {
         case "AICA_PING":
-          sendResponse({ ok: true });
+          sendResponse({
+            ok: true,
+            capabilities: {
+              extractor: Boolean(window.AICAPageExtractor),
+              highlighter: Boolean(window.AICAHighlighter),
+              badge: Boolean(window.AICAFloatingBadge)
+            }
+          });
           return false;
 
         case "AICA_EXTRACT_PAGE": {
@@ -36,6 +43,27 @@
             return false;
           }
           sendResponse(window.AICAHighlighter.applyHighlights(message.explanation || []));
+          return false;
+        }
+
+        case "AICA_RENDER_BADGE": {
+          if (!window.AICAFloatingBadge) {
+            sendResponse({
+              ok: false,
+              error: "The floating badge is not available yet."
+            });
+            return false;
+          }
+          sendResponse(window.AICAFloatingBadge.renderBadge(message.badge || {}));
+          return false;
+        }
+
+        case "AICA_HIDE_BADGE": {
+          if (!window.AICAFloatingBadge) {
+            sendResponse({ ok: true });
+            return false;
+          }
+          sendResponse(window.AICAFloatingBadge.removeBadge());
           return false;
         }
 

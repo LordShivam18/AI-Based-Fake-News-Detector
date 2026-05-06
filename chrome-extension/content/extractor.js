@@ -42,6 +42,7 @@
     const seenNodes = new Set();
     const seenText = new Set();
     const chunks = [];
+    let collectedChars = 0;
 
     for (const root of roots) {
       const nodes = root.matches?.(TEXT_SELECTOR)
@@ -69,13 +70,14 @@
           tag: node.tagName.toLowerCase(),
           text
         });
+        collectedChars += text.length + 2;
 
-        if (chunks.map((chunk) => chunk.text).join("\n\n").length >= maxChars) {
+        if (collectedChars >= maxChars) {
           break;
         }
       }
 
-      if (chunks.length && chunks.map((chunk) => chunk.text).join("\n\n").length >= maxChars) {
+      if (chunks.length && collectedChars >= maxChars) {
         break;
       }
     }

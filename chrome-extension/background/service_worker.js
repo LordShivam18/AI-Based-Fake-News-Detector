@@ -1,9 +1,12 @@
 const DEFAULT_API_BASE_URL = "http://localhost:8000";
 const MAX_EXTRACTED_CHARS = 12000;
+const MAX_SELECTED_CHARS = 12000;
 const MIN_EXTRACTED_CHARS = 80;
+const MIN_SELECTED_CHARS = 20;
 const API_TIMEOUT_MS = 45000;
 const STORAGE_LATEST_KEY = "aica:latest";
 const SETTINGS_KEY = "aica:settings";
+const CONTEXT_MENU_ID = "aica-analyze-selected-text";
 const inFlightAnalyses = new Map();
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -16,10 +19,23 @@ chrome.runtime.onInstalled.addListener(() => {
       });
     }
   });
+  setupContextMenu();
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
-  inFlightAnalyses.delete(tabId);
+  for (const key of inFlightAnalyses.keys()) {
+    if (key.includes(`:${tabId}`)) {
+      inFlightAnalyses.delete(key);
+    }
+  }
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== CONTEXT_MENU_ID || !tab?.id) {
+    return;
+  }
+
+  handleSelectionContextMenu(info, tab);
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -60,6 +76,10 @@ async function runMessageHandler(message) {
       return analyzeTab(Number(message.tabId));
     }
 
+    case "AICA_ANALYZE_SAVED_CONTEXT": {
+      return analyzeSavedContext(Number(message.tabId));
+    }
+
     case "AICA_OPEN_FULL_ANALYSIS": {
       const tabId = message.tabId ? Number(message.tabId) : (await getActiveTab()).id;
       const url = chrome.runtime.getURL(`panel/panel.html?tabId=${encodeURIComponent(tabId)}`);
@@ -85,6 +105,10 @@ async function runMessageHandler(message) {
       return clearHighlights(Number(message.tabId));
     }
 
+    case "AICA_HIDE_BADGE_TAB": {
+      return hideFloatingBadge(Number(message.tabId));
+    }
+
     case "AICA_SAVE_SETTINGS": {
       const settings = {
         apiBaseUrl: normalizeApiBaseUrl(message.settings?.apiBaseUrl || DEFAULT_API_BASE_URL)
@@ -98,19 +122,47 @@ async function runMessageHandler(message) {
   }
 }
 
+function setupContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ID,
+      title: "Analyze with Credibility Assistant",
+      contexts: ["selection"],
+      documentUrlPatterns: ["http://*/*", "https://*/*"]
+    });
+  });
+}
+
+async function handleSelectionContextMenu(info, tab) {
+  try {
+    const response = await analyzeSelectedText(tab.id, info.selectionText || "");
+    if (response.ok) {
+      await openFullAnalysis(tab.id);
+    }
+  } catch (error) {
+    await renderFloatingBadge(tab.id, {
+      error: true,
+      label: "Credibility",
+      riskLevel: "UNKNOWN"
+    }).catch(() => undefined);
+    console.warn("AI Credibility Assistant selection analysis failed:", error);
+  }
+}
+
 async function analyzeTab(tabId) {
   if (!Number.isFinite(tabId)) {
     throw new Error("No browser tab is available for analysis.");
   }
 
-  if (inFlightAnalyses.has(tabId)) {
-    return inFlightAnalyses.get(tabId);
+  const key = `page:${tabId}`;
+  if (inFlightAnalyses.has(key)) {
+    return inFlightAnalyses.get(key);
   }
 
   const promise = performAnalysis(tabId).finally(() => {
-    inFlightAnalyses.delete(tabId);
+    inFlightAnalyses.delete(key);
   });
-  inFlightAnalyses.set(tabId, promise);
+  inFlightAnalyses.set(key, promise);
   return promise;
 }
 
@@ -135,9 +187,63 @@ async function performAnalysis(tabId) {
     throw new Error("This page does not appear to contain enough readable article text to analyze.");
   }
 
+  return analyzeTextForTab(tab, extractionResponse.text, {
+    mode: "page",
+    page: extractionResponse.page,
+    extraction: extractionResponse.stats
+  });
+}
+
+async function analyzeSelectedText(tabId, rawText) {
+  const tab = await getTab(tabId);
+  assertSupportedTab(tab);
+  await ensureContentScripts(tab.id);
+
+  const limited = limitPlainText(cleanSelectedText(rawText), MAX_SELECTED_CHARS);
+  if (limited.text.length < MIN_SELECTED_CHARS) {
+    throw new Error("Select a little more article text before analyzing.");
+  }
+
+  const key = `selection:${tabId}:${checksum(limited.text)}`;
+  if (inFlightAnalyses.has(key)) {
+    return inFlightAnalyses.get(key);
+  }
+
+  const promise = analyzeTextForTab(tab, limited.text, {
+    mode: "selection",
+    page: {
+      title: tab.title || "Selected text",
+      url: tab.url,
+      language: "",
+      source: "selected-text"
+    },
+    extraction: {
+      chars: limited.text.length,
+      words: countWords(limited.text),
+      elements: 1,
+      truncated: limited.truncated,
+      maxChars: MAX_SELECTED_CHARS
+    }
+  }).finally(() => {
+    inFlightAnalyses.delete(key);
+  });
+
+  inFlightAnalyses.set(key, promise);
+  return promise;
+}
+
+async function analyzeSavedContext(tabId) {
+  const state = await getStoredState(tabId);
+  if (state?.source?.type === "selection" && state.analysis?.analyzed_text) {
+    return analyzeSelectedText(tabId, state.analysis.analyzed_text);
+  }
+  return analyzeTab(tabId);
+}
+
+async function analyzeTextForTab(tab, text, context) {
   const settings = await getSettings();
   const analysis = await postAnalyze(settings.apiBaseUrl, {
-    text: extractionResponse.text,
+    text,
     url: tab.url
   });
 
@@ -146,8 +252,12 @@ async function performAnalysis(tabId) {
     analyzedAt: new Date().toISOString(),
     apiBaseUrl: settings.apiBaseUrl,
     tab: serializeTab(tab),
-    page: extractionResponse.page,
-    extraction: extractionResponse.stats,
+    page: context.page,
+    extraction: context.extraction,
+    source: {
+      type: context.mode,
+      label: context.mode === "selection" ? "Selected text" : "Full page"
+    },
     analysis,
     highlight: {
       applied: false,
@@ -165,6 +275,21 @@ async function performAnalysis(tabId) {
     applied: Boolean(highlightResult.ok),
     count: highlightResult.count || 0,
     error: highlightResult.ok ? null : highlightResult.error
+  };
+
+  const badgeResult = await renderFloatingBadge(tab.id, {
+    label: "Credibility",
+    mode: context.mode,
+    riskLevel: analysis.risk_level,
+    score: analysis.credibility_score
+  }).catch((error) => ({
+    ok: false,
+    error: toFriendlyError(error)
+  }));
+
+  state.badge = {
+    shown: Boolean(badgeResult.ok),
+    error: badgeResult.ok ? null : badgeResult.error
   };
 
   await saveState(tab.id, state);
@@ -224,6 +349,12 @@ async function applyStoredHighlights(tabId) {
       error: result.ok ? null : result.error || null
     }
   };
+  await renderFloatingBadge(tabId, {
+    label: "Credibility",
+    mode: nextState.source?.type || "page",
+    riskLevel: nextState.analysis.risk_level,
+    score: nextState.analysis.credibility_score
+  }).catch(() => undefined);
   await saveState(tabId, nextState);
   return { ok: true, state: nextState, count: result.count || 0 };
 }
@@ -242,6 +373,32 @@ async function applyHighlightsFromAnalysis(tabId, analysis) {
   }
 
   return response;
+}
+
+async function renderFloatingBadge(tabId, badge) {
+  const tab = await getTab(tabId);
+  assertSupportedTab(tab);
+  await ensureContentScripts(tabId);
+  const response = await sendTabMessage(tabId, {
+    type: "AICA_RENDER_BADGE",
+    badge
+  });
+
+  if (!response?.ok) {
+    throw new Error(response?.error || "The credibility badge could not be shown.");
+  }
+
+  return response;
+}
+
+async function hideFloatingBadge(tabId) {
+  const tab = await getTab(tabId);
+  assertSupportedTab(tab);
+  await ensureContentScripts(tabId);
+  const response = await sendTabMessage(tabId, {
+    type: "AICA_HIDE_BADGE"
+  });
+  return { ok: true, count: response?.count || 0 };
 }
 
 async function clearHighlights(tabId) {
@@ -268,16 +425,27 @@ async function clearHighlights(tabId) {
 }
 
 async function ensureContentScripts(tabId) {
+  let needsInjection = true;
   try {
     const ping = await sendTabMessage(tabId, { type: "AICA_PING" });
-    if (ping?.ok) {
-      return;
+    if (
+      ping?.ok &&
+      ping.capabilities?.extractor &&
+      ping.capabilities?.highlighter &&
+      ping.capabilities?.badge
+    ) {
+      needsInjection = false;
     }
   } catch (_error) {
+    needsInjection = true;
+  }
+
+  if (needsInjection) {
     await insertCss(tabId, "content/content.css").catch(() => undefined);
     await executeScripts(tabId, [
       "content/extractor.js",
       "content/highlighter.js",
+      "content/badge.js",
       "content/contentScript.js"
     ]);
   }
@@ -306,6 +474,46 @@ function serializeTab(tab) {
 function normalizeApiBaseUrl(value) {
   const trimmed = String(value || DEFAULT_API_BASE_URL).trim();
   return trimmed.replace(/\/+$/, "") || DEFAULT_API_BASE_URL;
+}
+
+function cleanSelectedText(value) {
+  return String(value || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function limitPlainText(text, maxChars) {
+  if (text.length <= maxChars) {
+    return { text, truncated: false };
+  }
+
+  const slice = text.slice(0, maxChars);
+  const sentenceBoundary = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("? "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("\n\n")
+  );
+  const safeEnd = sentenceBoundary > maxChars * 0.7 ? sentenceBoundary + 1 : maxChars;
+  return {
+    text: slice.slice(0, safeEnd).trim(),
+    truncated: true
+  };
+}
+
+function countWords(text) {
+  return (String(text || "").match(/\b[\w'-]+\b/g) || []).length;
+}
+
+function checksum(text) {
+  let hash = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = (hash << 5) - hash + text.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(36);
 }
 
 function tabStateKey(tabId) {
@@ -390,6 +598,11 @@ function createTab(createProperties) {
       resolve(tab);
     });
   });
+}
+
+function openFullAnalysis(tabId) {
+  const url = chrome.runtime.getURL(`panel/panel.html?tabId=${encodeURIComponent(tabId)}`);
+  return createTab({ url });
 }
 
 function sendTabMessage(tabId, message) {
